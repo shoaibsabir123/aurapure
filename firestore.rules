@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Deny All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == "rizwansabirksa1990@gmail.com" ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Products collection
+    match /products/{productId} {
+      allow read: if isValidId(productId);
+      allow create: if isAdmin() && isValidId(productId) &&
+        request.resource.data.keys().hasAll(['id', 'name', 'category', 'price', 'originCountry']) &&
+        request.resource.data.name is string && request.resource.data.name.size() <= 200 &&
+        request.resource.data.price is number && request.resource.data.price >= 0;
+      allow update: if isAdmin() && isValidId(productId);
+      allow delete: if isAdmin() && isValidId(productId);
+    }
+
+    // Orders collection
+    match /orders/{orderId} {
+      allow get: if isValidId(orderId) && (
+        isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid)
+      );
+      allow list: if isAdmin() || (
+        isSignedIn() && resource.data.userId == request.auth.uid
+      );
+      allow create: if isValidId(orderId) &&
+        request.resource.data.keys().hasAll(['id', 'orderNumber', 'customerEmail', 'customerName', 'status', 'total']) &&
+        request.resource.data.total is number && request.resource.data.total >= 0 &&
+        request.resource.data.status in ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+      allow update: if isAdmin() && isValidId(orderId);
+      allow delete: if isAdmin() && isValidId(orderId);
+    }
+
+    // Reviews collection
+    match /reviews/{reviewId} {
+      allow read: if isValidId(reviewId);
+      allow create: if isValidId(reviewId) && (
+        isAdmin() || (
+          isSignedIn() &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.rating is number &&
+          request.resource.data.rating >= 1 &&
+          request.resource.data.rating <= 5
+        )
+      );
+      allow update, delete: if isAdmin() && isValidId(reviewId);
+    }
+
+    // Blog Posts collection
+    match /blogPosts/{postId} {
+      allow read: if isValidId(postId);
+      allow create, update, delete: if isAdmin() && isValidId(postId);
+    }
+
+    // Coupons collection
+    match /coupons/{couponId} {
+      allow read: if isValidId(couponId);
+      allow create, update, delete: if isAdmin() && isValidId(couponId);
+    }
+
+    // Admin directory
+    match /admins/{adminId} {
+      allow read: if isAdmin() && isValidId(adminId);
+      allow write: if false;
+    }
+  }
+}

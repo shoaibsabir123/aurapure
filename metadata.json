@@ -1,0 +1,6 @@
+{
+  "name": "Aura Pure - Global Lifestyle & Custom Natural Botanicals",
+  "description": "Discover unique international lifestyle products and customize bespoke skincare and wellness creations made with pure, natural ingredients from around the world.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
